@@ -3,10 +3,12 @@ import { BaseVideoAdapter } from '@tanstack/ai/adapters'
 import { configureFalClient, generateId as utilGenerateId } from '../utils'
 import { mapVideoSizeToFalFormat } from '../video/video-provider-options'
 import { mapImageInputsToFalVideoFields } from '../image/image-inputs'
-import type { AudioPart, MediaInputMetadata, VideoPart } from '@tanstack/ai'
 import type {
+  AudioPart,
+  MediaInputMetadata,
   VideoGenerationOptions,
   VideoJobResult,
+  VideoPart,
   VideoStatusResult,
   VideoUrlResult,
 } from '@tanstack/ai'
@@ -55,12 +57,12 @@ function mapAudioInputsToFalFields(
   audioInputs?: ReadonlyArray<AudioPart<MediaInputMetadata>>,
 ): Record<string, unknown> {
   if (!audioInputs || audioInputs.length === 0) return {}
-  if (audioInputs.length > 1) {
+  const [part, ...rest] = audioInputs
+  if (!part || rest.length > 0) {
     throw new Error(
-      `fal: multiple audioInputs are not supported (received ${audioInputs.length}).`,
+      `fal: exactly one audioInput is supported (received ${audioInputs.length}).`,
     )
   }
-  const part = audioInputs[0]!
   return {
     audio_url:
       part.source.type === 'url'
@@ -157,7 +159,10 @@ export class FalVideoAdapter<TModel extends FalModel> extends BaseVideoAdapter<
 
     try {
       const sizeParams = mapVideoSizeToFalFormat(size)
-      const inputImageFields = mapImageInputsToFalVideoFields(imageInputs)
+      const inputImageFields = mapImageInputsToFalVideoFields(
+        this.model,
+        imageInputs,
+      )
       const videoFields = mapVideoInputsToFalFields(videoInputs)
       const audioFields = mapAudioInputsToFalFields(audioInputs)
 
