@@ -248,6 +248,10 @@
         {
           "label": "Typed Pre-Configured Options",
           "to": "advanced/typed-options"
+        },
+        {
+          "label": "Provider Endpoint Schemas",
+          "to": "advanced/ai-schemas"
         }
       ]
     },
