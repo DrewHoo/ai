@@ -1,4 +1,5 @@
 import { fal } from '@fal-ai/client'
+import { resolveMediaPrompt } from '@tanstack/ai'
 import { BaseVideoAdapter } from '@tanstack/ai/adapters'
 import { configureFalClient, generateId as utilGenerateId } from '../utils'
 import { mapVideoSizeToFalFormat } from '../video/video-provider-options'
@@ -16,6 +17,7 @@ import type {
   FalModel,
   FalModelInput,
   FalModelVideoSize,
+  FalVideoPromptModalitiesFor,
   FalVideoProviderOptions,
 } from '../model-meta'
 import type { FalClientConfig } from '../utils'
@@ -60,7 +62,7 @@ function mapAudioInputsToFalFields(
   const [part, ...rest] = audioInputs
   if (!part || rest.length > 0) {
     throw new Error(
-      `fal: exactly one audioInput is supported (received ${audioInputs.length}).`,
+      `fal: exactly one audio prompt part is supported (received ${audioInputs.length}).`,
     )
   }
   return {
@@ -125,7 +127,8 @@ export class FalVideoAdapter<TModel extends FalModel> extends BaseVideoAdapter<
   TModel,
   FalVideoProviderOptions<TModel>,
   Record<TModel, FalVideoProviderOptions<TModel>>,
-  Record<TModel, FalModelVideoSize<TModel>>
+  Record<TModel, FalModelVideoSize<TModel>>,
+  Record<TModel, FalVideoPromptModalitiesFor<TModel>>
 > {
   override readonly kind = 'video' as const
   readonly name = 'fal' as const
@@ -141,16 +144,7 @@ export class FalVideoAdapter<TModel extends FalModel> extends BaseVideoAdapter<
       FalModelVideoSize<TModel>
     >,
   ): Promise<VideoJobResult> {
-    const {
-      prompt,
-      size,
-      duration,
-      modelOptions,
-      logger,
-      imageInputs,
-      videoInputs,
-      audioInputs,
-    } = options
+    const { size, duration, modelOptions, logger } = options
 
     logger.request(`activity=generateVideo provider=fal model=${this.model}`, {
       provider: 'fal',
@@ -158,13 +152,14 @@ export class FalVideoAdapter<TModel extends FalModel> extends BaseVideoAdapter<
     })
 
     try {
+      const resolved = resolveMediaPrompt(options.prompt)
       const sizeParams = mapVideoSizeToFalFormat(size)
       const inputImageFields = mapImageInputsToFalVideoFields(
         this.model,
-        imageInputs,
+        resolved.images,
       )
-      const videoFields = mapVideoInputsToFalFields(videoInputs)
-      const audioFields = mapAudioInputsToFalFields(audioInputs)
+      const videoFields = mapVideoInputsToFalFields(resolved.videos)
+      const audioFields = mapAudioInputsToFalFields(resolved.audios)
 
       const input = {
         ...modelOptions,
@@ -172,7 +167,9 @@ export class FalVideoAdapter<TModel extends FalModel> extends BaseVideoAdapter<
         ...inputImageFields,
         ...videoFields,
         ...audioFields,
-        prompt,
+        // Media-only prompts omit the prompt field rather than sending an
+        // empty string (e.g. pure image-to-video endpoints).
+        ...(resolved.text ? { prompt: resolved.text } : {}),
         ...(duration ? { duration } : {}),
       } as FalModelInput<TModel>
 
