@@ -624,10 +624,9 @@ the JSON Schema or finalization config before that provider call.
 Native-combined output stays in the regular agent loop. Its chunks use
 `ctx.phase === 'modelStream'`, and `onStructuredOutputConfig` does not fire.
 
-On both paths, `onChunk` observes the `structured-output.complete` event.
-`onUsage` observes usage on `RUN_FINISHED`. If an adapter reports usage on
-`RUN_ERROR`, read it through `onChunk`. After successful completion, `onFinish`
-fires once with the structured-output result available. See the
+On both paths, `onChunk` observes the `structured-output.complete` event,
+`onUsage` observes usage from the provider calls that ran, and `onFinish` fires
+once after the structured-output result is available. See
 [middleware skill](../middleware/SKILL.md).
 
 ## Cross-References

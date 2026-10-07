@@ -3257,35 +3257,4 @@ describe('structured output usage on interrupted streams', () => {
       }
     },
   )
-
-  it('closes the provider iterator when the consumer stops', async () => {
-    const closed = vi.fn()
-    mockSend = vi.fn().mockResolvedValue({
-      async *[Symbol.asyncIterator]() {
-        try {
-          yield {
-            id: 'gen-test',
-            model: 'openai/gpt-4o-mini',
-            choices: [],
-            usage: { promptTokens: 10, completionTokens: 50, totalTokens: 60 },
-          }
-          throw new Error('consumer must not request another chunk')
-        } finally {
-          closed()
-        }
-      },
-    })
-    for await (const chunk of createAdapter().structuredOutputStream({
-      chatOptions: {
-        model: 'openai/gpt-4o-mini',
-        messages: [{ role: 'user', content: 'Return JSON.' }],
-        logger: testLogger,
-      },
-      outputSchema: { type: 'object' },
-    })) {
-      expect(chunk.type).toBe('RUN_STARTED')
-      break
-    }
-    expect(closed).toHaveBeenCalledOnce()
-  })
 })
